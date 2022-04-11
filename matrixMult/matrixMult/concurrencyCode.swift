@@ -23,26 +23,27 @@ func matrixMult(A: [Double], B: [Double], N_start: Int, N_stop: Int, N: Int, thr
             }
         }
     }
-    print("returning from matrix mult: \(threadNum)")
+    //print("returning from matrix mult: \(threadNum)")
     return C
 }
 
-func callMatrixMult(A: [Double], B: [Double], N: Int, T_threads: [threadStats]) async throws -> [Double]{
-    async let c1 = matrixMult(A: A, B: B, N_start: T_threads[0].N_start, N_stop: T_threads[0].N_stop, N: N, threadNum: 1)
-    async let c2 = matrixMult(A: A, B: B, N_start: T_threads[1].N_start, N_stop: T_threads[1].N_stop, N: N, threadNum: 2)
-    return try await c1
-}
+/*func callMatrixMult(A: [Double], B: [Double], N: Int, T_threads: [threadStats]) async throws -> [Double]{
+ async let c1 = matrixMult(A: A, B: B, N_start: T_threads[0].N_start, N_stop: T_threads[0].N_stop, N: N, threadNum: 1)
+ async let c2 = matrixMult(A: A, B: B, N_start: T_threads[1].N_start, N_stop: T_threads[1].N_stop, N: N, threadNum: 2)
+ return try await c1
+ }*/
 
 
-func callAsyncFunctions(){
+func callAsyncFunctions() async -> [Double]{
+    let calendar = Calendar.current
     let N = 200
     let numThreads = 2
     let loopSize = Int(ceil(Double(N)/Double(numThreads)))
     var threads: [threadStats] = []
     var a: [Double] = []
     var b: [Double] = []
-    var C = Array(repeating: 0.0, count: (N * N))
-    var C_orig = Array(repeating: 0.0, count: (N * N))
+    var C: [Double] = []
+    //var C_orig = Array(repeating: 0.0, count: (N * N))
     
     for _ in 0..<N*N{
         a.append(Double.random(in: 0..<1000))
@@ -60,7 +61,28 @@ func callAsyncFunctions(){
     let B = b
     let T_threads = threads
     print("about to enter task")
-    Task{
-        try await callMatrixMult(A: A, B: B, N: N, T_threads: T_threads)
+    let startingTime = Date.now
+    do{
+        try await withThrowingTaskGroup(of: [Double].self){group in
+            for i in 0..<numThreads{
+                group.addTask{
+                    let partialMatrix = try await matrixMult(A: A, B: B, N_start: T_threads[i].N_start, N_stop: T_threads[i].N_stop, N: N, threadNum: i)
+                    return partialMatrix
+                }
+            }
+            
+            //var C: [Double] = []
+            
+            for try await partialMatrix in group{
+                C += partialMatrix
+            }
+        }
+    }catch{
+        print("error in task group")
+        return []
     }
+    let endingTime = Date.now
+    let concurrentTime = calendar.dateComponents([.second], from: startingTime, to: endingTime).second!
+    print("Threaded Time: \(concurrentTime)")
+    return C
 }

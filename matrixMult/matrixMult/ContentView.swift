@@ -9,9 +9,10 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        Button(action: callAsyncFunctions){
-            Text("Perform Matrix Mult")
-        }
+        Text("Performing Matrix Mult")
+            .task{
+                await callAsyncFunctions()
+            }
     }
 }
 
