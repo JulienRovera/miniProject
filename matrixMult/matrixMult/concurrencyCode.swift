@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 import UIKit
 
 struct threadStats{
@@ -46,8 +47,8 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
                 return partialMatrix
             }
         }
-        for try await partialMatrix in group{
-            C += partialMatrix
+        for try await item in group{
+            C += item
         }
     }
     return C
@@ -58,7 +59,7 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
 
 func callAsyncFunctions() async throws{
     //let calendar = Calendar.current
-    let N = 100
+    let N = 200
     //let numThreads = 2
     var a: [Double] = []
     var b: [Double] = []
