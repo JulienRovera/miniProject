@@ -6,11 +6,13 @@
 //
 
 import Foundation
+import UIKit
 
 struct threadStats{
     var N_start: Int
     var N_stop: Int
     var vals: [Double] = []
+    var threadNum: Int;
 }
 
 func matrixMult(A: [Double], B: [Double], N_start: Int, N_stop: Int, N: Int, threadNum: Int) async throws -> [Double]{
@@ -23,26 +25,43 @@ func matrixMult(A: [Double], B: [Double], N_start: Int, N_stop: Int, N: Int, thr
             }
         }
     }
-    print("returning from matrix mult: \(threadNum)")
+    //print("returning from matrix mult: \(threadNum)")
     return C
 }
 
-/*func callMatrixMult(A: [Double], B: [Double], N: Int, T_threads: [threadStats]) async throws -> [Double]{
- async let c1 = matrixMult(A: A, B: B, N_start: T_threads[0].N_start, N_stop: T_threads[0].N_stop, N: N, threadNum: 1)
- async let c2 = matrixMult(A: A, B: B, N_start: T_threads[1].N_start, N_stop: T_threads[1].N_stop, N: N, threadNum: 2)
- return try await c1
- }*/
-
-
-func callAsyncFunctions(numThreads: Int) async -> [Double]{
-    let calendar = Calendar.current
-    let N = 200
-    //let numThreads = 2
-    let loopSize = Int(ceil(Double(N)/Double(numThreads)))
+func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async throws -> [Double]{
+    var C: [Double] = []
     var threads: [threadStats] = []
+    let loopSize = Int(ceil(Double(N)/Double(numThreads)))
+    for i in 0..<numThreads{
+        threads.append(threadStats(N_start: i*loopSize, N_stop: (i+1)*loopSize, threadNum: i))
+        if threads[i].N_stop > N{
+            threads[i].N_stop = N
+        }
+    }
+    try await withThrowingTaskGroup(of: [Double].self){group in
+        for thread in threads{
+            group.addTask{
+                let partialMatrix = try await matrixMult(A: A, B: B, N_start: thread.N_start, N_stop: thread.N_stop, N: N, threadNum: thread.threadNum)
+                return partialMatrix
+            }
+        }
+        for try await partialMatrix in group{
+            C += partialMatrix
+        }
+    }
+    return C
+ }
+
+
+
+
+func callAsyncFunctions() async throws{
+    //let calendar = Calendar.current
+    let N = 100
+    //let numThreads = 2
     var a: [Double] = []
     var b: [Double] = []
-    var C: [Double] = []
     //var C_orig = Array(repeating: 0.0, count: (N * N))
     
     for _ in 0..<N*N{
@@ -50,49 +69,41 @@ func callAsyncFunctions(numThreads: Int) async -> [Double]{
         b.append(Double.random(in: 0..<1000))
     }
     
-    for i in 0..<numThreads{
-        threads.append(threadStats(N_start: i*loopSize, N_stop: (i+1)*loopSize))
-        if threads[i].N_stop > N{
-            threads[i].N_stop = N
-        }
-    }
+    
     
     let A = a
     let B = b
-    let T_threads = threads
-    print("about to enter task")
+    let P_vals = [1, 2, 3, 4, 10]
     
-    do{
-        
-        return try await withThrowingTaskGroup(of: [Double].self){group in
-            let startingTime = Date.now
-            for i in 0..<numThreads{
-                group.addTask{
-                    return try await matrixMult(A: A, B: B, N_start: T_threads[i].N_start, N_stop: T_threads[i].N_stop, N: N, threadNum: i)
-                    //return partialMatrix
-                }
-            }
-            
-            //var C: [Double] = []
-            
-            for try await partialMatrix in group{
-                C += partialMatrix
-            }
-            let endingTime = Date.now
-            let concurrentTime = calendar.dateComponents([.nanosecond], from: startingTime, to: endingTime).nanosecond!
-            print("Threaded Time: \(concurrentTime) For \(numThreads) threads")
-            print(startingTime)
-            print(endingTime)
-            return C
-        }
-    }catch{
-        print("error in task group")
-        return []
+    for P in P_vals{
+        let startingTime = DispatchTime.now()
+        let _ = try await callMatrixMult(A: A, B: B, N: N, numThreads: P)
+        let endingTime = DispatchTime.now()
+        let concurrentTime = endingTime.uptimeNanoseconds - startingTime.uptimeNanoseconds
+        print("time for \(P) threads: \(concurrentTime)")
     }
-   
-    /*let concurrentTime = calendar.dateComponents([.nanosecond], from: startingTime, to: endingTime).nanosecond!
+    
+    let serialStartTime = DispatchTime.now()
+    try await matrixMult(A: A, B: B, N_start: 0, N_stop: N, N: N, threadNum: 0)
+    let serialEndTime = DispatchTime.now()
+    let serialTime = serialEndTime.uptimeNanoseconds - serialStartTime.uptimeNanoseconds
+    print("Serial Run Time: \(serialTime)")
+    
+    /*
+    let endingTime = DispatchTime.now()
+    let concurrentTime = endingTime.uptimeNanoseconds - startingTime.uptimeNanoseconds
     print("Threaded Time: \(concurrentTime) For \(numThreads) threads")
-    print(startingTime)
-    print(endingTime)
-    return C*/
+    
+    //let startingSerialTime = DispatchTime.now()
+    async let C_new = matrixMult(A: A, B: B, N_start: 0, N_stop: N, N: N, threadNum: 0)
+    let endingSerialTime = DispatchTime.now()
+    let serialTime = endingSerialTime.uptimeNanoseconds - startingSerialTime.uptimeNanoseconds
+    //print("serial time: \(serialTime)")
+    try await print("C new: \(C_new.count)")
+    print("C: \(C.count)")*/
+    /*let concurrentTime = calendar.dateComponents([.nanosecond], from: startingTime, to: endingTime).nanosecond!
+     print("Threaded Time: \(concurrentTime) For \(numThreads) threads")
+     print(startingTime)
+     print(endingTime)
+     return C*/
 }

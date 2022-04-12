@@ -11,11 +11,11 @@ struct ContentView: View {
     var body: some View {
         Text("Performing Matrix Mult")
             .task{
-                await callAsyncFunctions(numThreads: 1)
-                await callAsyncFunctions(numThreads: 2)
-                await callAsyncFunctions(numThreads: 3)
-                await callAsyncFunctions(numThreads: 4)
-                await callAsyncFunctions(numThreads: 10)
+                do{
+                    try await callAsyncFunctions()
+                }catch{
+                    print("an error happened")
+                }
             }
     }
 }
