@@ -23,7 +23,7 @@ func matrixMult(A: [Double], B: [Double], N_start: Int, N_stop: Int, N: Int, thr
             }
         }
     }
-    //print("returning from matrix mult: \(threadNum)")
+    print("returning from matrix mult: \(threadNum)")
     return C
 }
 
@@ -34,10 +34,10 @@ func matrixMult(A: [Double], B: [Double], N_start: Int, N_stop: Int, N: Int, thr
  }*/
 
 
-func callAsyncFunctions() async -> [Double]{
+func callAsyncFunctions(numThreads: Int) async -> [Double]{
     let calendar = Calendar.current
     let N = 200
-    let numThreads = 2
+    //let numThreads = 2
     let loopSize = Int(ceil(Double(N)/Double(numThreads)))
     var threads: [threadStats] = []
     var a: [Double] = []
@@ -61,13 +61,15 @@ func callAsyncFunctions() async -> [Double]{
     let B = b
     let T_threads = threads
     print("about to enter task")
-    let startingTime = Date.now
+    
     do{
-        try await withThrowingTaskGroup(of: [Double].self){group in
+        
+        return try await withThrowingTaskGroup(of: [Double].self){group in
+            let startingTime = Date.now
             for i in 0..<numThreads{
                 group.addTask{
-                    let partialMatrix = try await matrixMult(A: A, B: B, N_start: T_threads[i].N_start, N_stop: T_threads[i].N_stop, N: N, threadNum: i)
-                    return partialMatrix
+                    return try await matrixMult(A: A, B: B, N_start: T_threads[i].N_start, N_stop: T_threads[i].N_stop, N: N, threadNum: i)
+                    //return partialMatrix
                 }
             }
             
@@ -76,13 +78,21 @@ func callAsyncFunctions() async -> [Double]{
             for try await partialMatrix in group{
                 C += partialMatrix
             }
+            let endingTime = Date.now
+            let concurrentTime = calendar.dateComponents([.nanosecond], from: startingTime, to: endingTime).nanosecond!
+            print("Threaded Time: \(concurrentTime) For \(numThreads) threads")
+            print(startingTime)
+            print(endingTime)
+            return C
         }
     }catch{
         print("error in task group")
         return []
     }
-    let endingTime = Date.now
-    let concurrentTime = calendar.dateComponents([.second], from: startingTime, to: endingTime).second!
-    print("Threaded Time: \(concurrentTime)")
-    return C
+   
+    /*let concurrentTime = calendar.dateComponents([.nanosecond], from: startingTime, to: endingTime).nanosecond!
+    print("Threaded Time: \(concurrentTime) For \(numThreads) threads")
+    print(startingTime)
+    print(endingTime)
+    return C*/
 }
