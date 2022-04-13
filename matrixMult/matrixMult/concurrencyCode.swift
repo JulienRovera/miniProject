@@ -41,7 +41,7 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
         if threads[i].N_stop > N{
             threads[i].N_stop = N
         }
-    }/*
+    }
     try await withThrowingTaskGroup(of: [Double].self){group in
         for thread in threads{
             group.addTask{
@@ -52,8 +52,8 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
         for try await item in group{
             C += item
         }
-    }*/
-    let T_threads = threads;
+    }
+    /*let T_threads = threads;
     print("using async lets")
     if numThreads == 1{
         async let c1 = matrixMult(A: A, B: B, N_start: T_threads[0].N_start, N_stop: T_threads[0].N_stop, N: N, threadNum: 0)
@@ -64,7 +64,7 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
         try await C = C + c1 + c2
     }else{
         print("not handled yet")
-    }
+    }*/
     
     return C
  }
