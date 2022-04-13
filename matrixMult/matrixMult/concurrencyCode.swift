@@ -17,6 +17,7 @@ struct threadStats{
 }
 
 func matrixMult(A: [Double], B: [Double], N_start: Int, N_stop: Int, N: Int, threadNum: Int) async throws -> [Double]{
+    
     var C = Array(repeating: 0.0, count: ((N_stop - N_start) * N))
     for i in N_start..<N_stop{
         let c_i = i - N_start
@@ -26,6 +27,7 @@ func matrixMult(A: [Double], B: [Double], N_start: Int, N_stop: Int, N: Int, thr
             }
         }
     }
+    
     //print("returning from matrix mult: \(threadNum)")
     return C
 }
@@ -39,7 +41,7 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
         if threads[i].N_stop > N{
             threads[i].N_stop = N
         }
-    }
+    }/*
     try await withThrowingTaskGroup(of: [Double].self){group in
         for thread in threads{
             group.addTask{
@@ -50,7 +52,20 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
         for try await item in group{
             C += item
         }
+    }*/
+    let T_threads = threads;
+    print("using async lets")
+    if numThreads == 1{
+        async let c1 = matrixMult(A: A, B: B, N_start: T_threads[0].N_start, N_stop: T_threads[0].N_stop, N: N, threadNum: 0)
+        try await C += c1
+    }else if numThreads == 2{
+        async let c1 = matrixMult(A: A, B: B, N_start: T_threads[0].N_start, N_stop: T_threads[0].N_stop, N: N, threadNum: 0)
+        async let c2 = matrixMult(A: A, B: B, N_start: T_threads[1].N_start, N_stop: T_threads[1].N_stop, N: N, threadNum: 1)
+        try await C = C + c1 + c2
+    }else{
+        print("not handled yet")
     }
+    
     return C
  }
 
@@ -58,6 +73,10 @@ func callMatrixMult(A: [Double], B: [Double], N: Int, numThreads: Int) async thr
 
 
 func callAsyncFunctions() async throws{
+    print("hello")
+    if Thread.isMainThread{
+        print("Thread callAsync on main thread")
+    }
     //let calendar = Calendar.current
     let N = 200
     //let numThreads = 2
@@ -74,7 +93,7 @@ func callAsyncFunctions() async throws{
     
     let A = a
     let B = b
-    let P_vals = [1, 2, 3, 4, 10]
+    let P_vals = [1, 2, 1, 1, 2, 2]
     
     for P in P_vals{
         let startingTime = DispatchTime.now()
